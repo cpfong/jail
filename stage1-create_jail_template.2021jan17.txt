@@ -1,0 +1,96 @@
+#!/bin/sh
+#
+# obj: Creating the Template
+# build & install world, this /home/j is a template for all jails
+# note: this cript does NOT exec, only generate command
+#
+# how: check handbook of FreeBSD at chapter15 15.5. Updating Multiple Jails
+# https://www.freebsd.org/doc/handbook/jails-application.html
+#
+# 2015/02/12 file created on n4jj.x.rootbsd.net
+# 2017/05/17 bsd on aws. ccache for compile. note: better make swap available and compile new kernel before this
+# 2021/01/17 do it on vultr:saturn
+#
+# attention: use /bin/sh in root
+#    1. run as root
+#    2. shell use /bin/sh (root default shell is csh, so need to run sh first)
+
+#note: according to handbook 15.5.1 : recommended to first update the host FreeBSD source 
+#      how to update system: handbook Section 24.5,
+#
+# buildworld take more than one day to compile
+# 2017may17 with j2 16h 16:56-11:11, using new make.conf and ccache 4g (kernel compile org 2h now 10mins with new make.conf)
+# 2021jan18 vultr 55g 2g 1cpu amd64 
+# 1. rm -rf /usr/obj/usr; cd /usr/src && time make -j2 buildworld	9hr30m
+# 2. rm -fr /usr/obj/usr; cd /usr/src && make -j3 buildworld		8hr30m 17:25-02:05	
+# 3. rm -fr /usr/obj/usr; cd /usr/src && make -j4 buildworld		3hr24m 02:16-05:40
+# 4. rm -fr /usr/obj/usr; cd /usr/src && make -j6 buildworld		8hr20m 06:18-14:44
+# ref: https://forums.freebsd.org/threads/question-about-speeding-make-buildworld-up.23546/ 
+
+# how 2 speed up?
+# devel/ccache helps a lot. dual-core system with ccache, one find -j6 fastest, and suggest delete /usr/obj/usr before starting a buildworld.
+# ccache (https://forums.freebsd.org/threads/174/) check also ./cache.readme.txt
+# I also give it more disk space than default: (4g)
+# comment: 2021jan no TMPFS on KERNEL config now, however you can mount like this: 
+# mkdir /ram (recompile kernel put options TMPFS in, 2021 vi /etc/loader.conf  tmpfs_load="YES"
+#
+## mount -t tmpfs -o size=536870912 tmpfs /var (512MByte)
+# mount -t tmpfs -o size=536870912 tmpfs /ram
+# /etc/make.conf
+# WITH_CCACHE_BUILD=yes
+# WRKDIRPREFIX=/ram
+
+# Testing:
+# rm -rf /usr/obj/usr
+# cd /usr/src && time make -j2 buildworld
+# Remove /usr/obj and build again with -j3, -j4, and so on until you get tired of it. Pick whichever value of -j resulted in the fastest compile.
+# make cleanworld is a pointless delay if you just delete /usr/obj before starting a buildworld
+# for 2021 vlutr BSD 12.2R 55g 2g RAM amd64 1cpu -j4 is best (3hrs)
+
+# according to chapter 24.5 of handbook. (do once only)
+# cd /usr/src          3
+# make -j4 buildworld  4
+# make -j4 kernel      5 # equivalent to make buildkernel
+# make -j4 buildkernel KERNCONF=SATURN #cp way
+# shutdown -r now      6
+# cd /usr/src          7
+# make installworld    8
+# mergemaster -Ui      9
+# shutdown -r now      10
+#
+
+#j='/home/j' # orig way, as ref
+j='/srv/j' # i am going to use zfs
+root="$j/mroot"
+skel="$j/skel"
+
+echo "mkdir -p $root" 
+
+# zfs create -p zroot/srv/j/mroot
+# zfs set mountpoint=/srv zroot/srv
+# zfs create -p zroot/srv/j/skel
+
+cd /usr/src
+make installworld DESTDIR=$root # make installworld DESTDIR=/srv/j/mroot
+make distribution DESTDIR=$root # make distribution DESTDIR=/srv/j/mroot
+
+# jails need own ports and i use nullfs, so just create dir is enough now (this is different than handbook)
+echo "mkdir $root/usr/ports	# mkdir /srv/j/mroot/usr/ports
+cpdup /usr/src $root/usr/src"	# cpdup /usr/src /srv/j/mroot/usr/src
+# the above on $root is read-only portion of the system
+
+# skeleton for the read-write system
+echo "mkdir $skel $skel/home $skel/usr-X11R6 $skel/distfiles"
+mkdir /srv/j/skel/home /srv/j/skel/usr-X11R6 /srv/j/skel/distfiles # note: no need to mkdir /srv/j/skel since it is mount point of zfs
+
+echo "mv $root/etc $skel
+mv $root/usr/local $skel/usr-local
+mv $root/tmp $skel
+mv $root/var $skel
+mv $root/root $skel"
+
+mv /srv/j/mroot/etc /srv/j/skel/
+mv /srv/j/mroot/usr/local /srv/j/skel/usr-local
+mv /srv/j/mroot/tmp /srv/j/skel/
+mv /srv/j/mroot/var /srv/j/skel/ # $root/var/empty canNOT be moved; i will chflags schg /srv/j/skel/var/empty
+mv /srv/j/mroot/root /srv/j/skel/

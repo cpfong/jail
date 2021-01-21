@@ -1,0 +1,55 @@
+# this is the last cmd in stage1, you do NOT need to do this
+### mv root /home/j/skel
+
+# Use mergemaster to install missing config files. 
+mergemaster -t /home/j/skel/var/tmp/temproot -D /home/j/skel -i	# -t /path/to/temp/root
+								# Create the temporary root environment in /path/to/temp/root
+								# instead of the default /var/tmp/temproot.
+mergemaster -t /srv/j/skel/var/tmp/temproot -D /srv/j/skel -i
+
+# remove extra directories mergemaster created # cp note: say YES to make pwd.DB
+# cp's comment: all files this is on mroot which is Read-Only and i am at skel ( Read-Write )
+
+cd /home/j/skel
+rm -R bin boot lib libexec mnt proc rescue sbin sys usr dev #note: no sys
+
+#Now, symlink the read-write file system to the read-only file system. 
+#Ensure that the symlinks are created in the correct s/ locations as 
+#the creation of directories in the wrong locations will cause the installation to fail.
+
+cd /home/j/mroot
+mkdir s
+ln -s /s/etc etc	#cp 2021jan comment: wrong /s/etc should be s/etc, keep it this way as ref
+ln -s /s/home home
+ln -s /s/root root
+ln -s /s/usr-local usr/local
+ln -s /s/usr-X11R6 usr/X11R6
+ln -s /s/distfiles usr/ports/distfiles
+ln -s /s/tmp tmp
+ln -s /s/var var
+
+# cp's comment: mroot is Read-Only, no need for etc home root ... (these dir is under skel which is RW)
+cd /srv/j/mroot
+mkdir s		#s stand for skel (which is RW)
+ln -s s/etc etc
+ln -s s/home home
+ln -s s/root root
+ln -s s/tmp tmp
+ln -s s/var var
+ln -s ../s/usr-local usr/local
+ln -s ../s/usr-X11R6 usr/X11R6
+ln -s ../../s/distfiles usr/ports/distfiles
+
+#done with the jail common part ( template )
+#now we can move on to create a jail service
+
+#As a last step, create a generic /home/j/skel/etc/make.conf containing this line:
+#
+#WRKDIRPREFIX?=  /s/portbuild
+#This makes it possible to compile FreeBSD ports inside each jail. Remember that the ports directory is part of the read-only system. The custom path for WRKDIRPREFIX allows builds to be done in the read-write portion of every jail.
+
+# cpfong for post config
+cat /root/0jail_all_dir/rc.conf.jail1.ns > /home/j/skel/etc/rc.conf
+cat /root/0jail_all_dir/ipfw.rules.jail1.ns > /home/j/skel/etc/ipfw.rules
+echo nameserver 163.15.203.1 > /home/j/skel/etc/resolv.conf
+echo WRKDIRPREFIX?= /tmp > /home/j/skel/etc/make.conf

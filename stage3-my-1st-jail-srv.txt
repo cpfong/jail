@@ -1,0 +1,14 @@
+
+handbook 15.5.2 Creating jails
+--
+mkdir -p /srv/js/www
+mkdir -p /srv/j/www/s
+zfs create zroot/srv/js
+
+mount -o ro -t nullfs /srv/j/mroot /srv/j/www # RO
+mount -t nullfs -o rw /srv/js/www /srv/j/www/s # skel RW
+
+root@saturn:/srv/j/skel/etc # cpdup /srv/j/skel /srv/js/www
+root@saturn:~ # service jail start www jail
+
+done!!!
