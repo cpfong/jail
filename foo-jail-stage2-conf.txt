@@ -1,0 +1,13 @@
+# tag foo come from ./foo-jail-zfs-stage1.sh
+# this file go to /etc/jail.conf and it is default file for jail 
+
+foo {
+ exec.start  = "/bin/sh /etc/rc";
+ exec.stop   = "/bin/sh /etc/rc.shutdown";
+ exec.clean;
+
+ mount.devfs;
+
+ path = "/mnt/jails/foo";
+ host.hostname = "foo.local";
+}

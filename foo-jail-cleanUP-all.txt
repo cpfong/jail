@@ -1,0 +1,9 @@
+service jail foo stop
+
+@SaTurn-> sudo zfs umount -f /mnt/jails/foo/
+@SaTurn-> sudo zfs umount -f /mnt/jails
+@SaTurn-> sudo zfs umount -f /mnt
+
+root@saturn:/usr/home/cpfong/bin/jail # zfs destroy zroot/srv/jails/foo
+root@saturn:/usr/home/cpfong/bin/jail # zfs destroy zroot/srv/jails
+root@saturn:/usr/home/cpfong/bin/jail # zfs destroy zroot/srv

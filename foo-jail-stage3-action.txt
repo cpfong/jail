@@ -1,0 +1,7 @@
+jail -c foo # launch same as service jail start foo
+# jls now you can find service foo
+# jexec foo will enter foo environment
+# df in foo
+#root@foo:/ # df
+#Filesystem          512-blocks   Used    Avail Capacity  Mounted on
+#zroot/srv/jails/foo   86868488 930776 85937712     1%    /
